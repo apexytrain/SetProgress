@@ -1,4 +1,4 @@
-const CACHE = 'mytraining-6.98';
+const CACHE = 'setprogress-6.98';
 const APP_SHELL = ['./', './index.html', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', event => {
