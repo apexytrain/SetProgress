@@ -42,7 +42,7 @@ jobs:
           SET_PROGRESS_KEY_ALIAS: ${{ secrets.SET_PROGRESS_KEY_ALIAS }}
           SET_PROGRESS_KEY_PASSWORD: ${{ secrets.SET_PROGRESS_KEY_PASSWORD }}
         run: |
-          gradle --no-daemon -p android bundleRelease
+          gradle --no-daemon ... assembleRelease bundleRelease
 
       - name: Upload AAB
         uses: actions/upload-artifact@v4
