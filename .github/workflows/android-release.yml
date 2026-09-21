@@ -27,7 +27,7 @@ jobs:
 
       - name: Extract Android project
         run: |
-          unzip -o SetProgress_android-project.zip -d .
+           unzip -o SetProgress_6_207_Versionsnummern_vereinheitlicht.zip
 
       - name: Prepare signing key
         env:
