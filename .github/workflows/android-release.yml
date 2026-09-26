@@ -1,59 +1,45 @@
-name: SetProgress Android Build
+name: Import SetProgress 6.307
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
+
+permissions:
+  contents: write
 
 jobs:
-  build:
+  import:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.10.2'
-
-      - name: Extract Android project
+      - name: Find release ZIP
         run: |
-          unzip -o SetProgress_6_207_Versionsnummern_vereinheitlicht.zip
+          ZIP=$(find . -maxdepth 1 -type f -name 'SetProgress_6_307_GITHUB_RELEASE_BUILD.zip' | head -n 1)
+          if [ -z "$ZIP" ]; then
+            echo "Release ZIP not found"
+            exit 1
+          fi
+          echo "ZIP=$ZIP" >> "$GITHUB_ENV"
 
-      - name: Prepare signing key
-        env:
-          KEYSTORE_B64: ${{ secrets.SET_PROGRESS_KEYSTORE_B64 }}
+      - name: Extract release
         run: |
-          echo "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/setprogress-release.jks"
+          mkdir -p /tmp/setprogress307
+          unzip -o "$ZIP" -d /tmp/setprogress307
 
-      - name: Build AAB and APK
-        env:
-          SET_PROGRESS_KEYSTORE: ${{ runner.temp }}/setprogress-release.jks
-          SET_PROGRESS_KEYSTORE_PASSWORD: ${{ secrets.SET_PROGRESS_KEYSTORE_PASSWORD }}
-          SET_PROGRESS_KEY_ALIAS: ${{ secrets.SET_PROGRESS_KEY_ALIAS }}
-          SET_PROGRESS_KEY_PASSWORD: ${{ secrets.SET_PROGRESS_KEY_PASSWORD }}
+      - name: Copy release files into repository
         run: |
-          gradle --no-daemon -p android assembleRelease bundleRelease
+          cp -a /tmp/setprogress307/. .
 
-      - name: Upload AAB
-        uses: actions/upload-artifact@v4
-        with:
-          name: SetProgress-AAB
-          path: android/app/build/outputs/bundle/release/*.aab
-          if-no-files-found: error
+      - name: Remove imported ZIP
+        run: |
+          rm -f SetProgress_6_307_GITHUB_RELEASE_BUILD.zip
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: SetProgress-Release-APK
-          path: android/app/build/outputs/apk/release/*.apk
-          if-no-files-found: error
+      - name: Commit SetProgress 6.307
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Import SetProgress 6.307 release source" || echo "Nothing to commit"
+          git push
