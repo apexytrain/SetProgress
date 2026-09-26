@@ -1,75 +1,96 @@
-name: Import SetProgress 6.307
+name: SetProgress Android Build 6.307
 
 on:
   workflow_dispatch:
-
-permissions:
-  contents: write
+  push:
+    branches:
+      - main
 
 jobs:
-  import:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Find release ZIP
-        run: |
-          ZIP=$(find . -maxdepth 1 -type f -name 'SetProgress_6_307_GITHUB_RELEASE_BUILD_FIXED.zip' | head -n 1)
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
 
-          if [ -z "$ZIP" ]; then
-            echo "ERROR: SetProgress 6.307 release ZIP not found"
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+
+      - name: Check release ZIP
+        run: |
+          ZIP="SetProgress_6_307_GITHUB_RELEASE_BUILD_FIXED.zip"
+
+          if [ ! -f "$ZIP" ]; then
+            echo "ERROR: $ZIP not found"
             exit 1
           fi
 
-          echo "Found release ZIP: $ZIP"
-          echo "ZIP=$ZIP" >> "$GITHUB_ENV"
+          echo "Using release ZIP: $ZIP"
 
-      - name: Extract release
+      - name: Extract Android project
         run: |
-          rm -rf /tmp/setprogress307
-          mkdir -p /tmp/setprogress307
-
-          unzip -o "$ZIP" -d /tmp/setprogress307
-
-          echo "Release extracted successfully."
+          rm -rf android
+          unzip -o "SetProgress_6_307_GITHUB_RELEASE_BUILD_FIXED.zip"
 
       - name: Verify Android project
         run: |
-          test -f /tmp/setprogress307/android/app/build.gradle
-          test -f /tmp/setprogress307/android/app/src/main/assets/index.html
+          test -f android/app/build.gradle
+          test -f android/app/src/main/assets/index.html
 
           echo "Android project found."
 
-      - name: Verify release version
+      - name: Verify version
         run: |
-          echo "Checking for 6.307..."
+          echo "Checking release version..."
 
-          if grep -R "6.307" /tmp/setprogress307/android/app/build.gradle \
-              /tmp/setprogress307/android/app/src/main/assets/index.html \
-              /tmp/setprogress307/android/app/src/main/assets/sw.js 2>/dev/null; then
-            echo "6.307 found."
+          echo "build.gradle:"
+          grep -n "versionName\|versionCode" android/app/build.gradle || true
+
+          echo "index.html:"
+          grep -n "app-version" android/app/src/main/assets/index.html || true
+
+          if grep -q "6.307" android/app/build.gradle && \
+             grep -q "6.307" android/app/src/main/assets/index.html; then
+            echo "SUCCESS: Version 6.307 found."
           else
-            echo "ERROR: 6.307 was not found in release files."
+            echo "ERROR: Version 6.307 was not found."
             exit 1
           fi
 
-      - name: Copy release files into repository
+      - name: Prepare signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.SET_PROGRESS_KEYSTORE_B64 }}
         run: |
-          cp -a /tmp/setprogress307/. .
+          echo "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/setprogress-release.jks"
 
-      - name: Remove imported ZIP
+      - name: Build AAB and APK
+        env:
+          SET_PROGRESS_KEYSTORE: ${{ runner.temp }}/setprogress-release.jks
+          SET_PROGRESS_KEYSTORE_PASSWORD: ${{ secrets.SET_PROGRESS_KEYSTORE_PASSWORD }}
+          SET_PROGRESS_KEY_ALIAS: ${{ secrets.SET_PROGRESS_KEY_ALIAS }}
+          SET_PROGRESS_KEY_PASSWORD: ${{ secrets.SET_PROGRESS_KEY_PASSWORD }}
         run: |
-          rm -f SetProgress_6_307_GITHUB_RELEASE_BUILD_FIXED.zip
+          gradle --no-daemon -p android assembleRelease bundleRelease
 
-      - name: Commit SetProgress 6.307
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+      - name: Upload AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: SetProgress-AAB
+          path: android/app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
 
-          git add -A
-
-          git commit -m "Import SetProgress 6.307 release source" || echo "Nothing to commit"
-
-          git push
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: SetProgress-Release-APK
+          path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
