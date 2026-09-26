@@ -34,7 +34,7 @@ jobs:
 
       - name: Remove imported ZIP
         run: |
-          rm -f SetProgress_6_307_GITHUB_RELEASE_BUILD.zip
+          rm -f SetProgress_6_307_GITHUB_RELEASE_BUILD_FIXED.zip
 
       - name: Commit SetProgress 6.307
         run: |
