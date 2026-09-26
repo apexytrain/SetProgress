@@ -16,7 +16,7 @@ jobs:
 
       - name: Find release ZIP
         run: |
-          ZIP=$(find . -maxdepth 1 -type f -name 'SetProgress_6_307_GITHUB_RELEASE_BUILD.zip' | head -n 1)
+          ZIP=$(find . -maxdepth 1 -type f -name 'SetProgress_6_307_GITHUB_RELEASE_BUILD_FIXED.zip' | head -n 1)
           if [ -z "$ZIP" ]; then
             echo "Release ZIP not found"
             exit 1
